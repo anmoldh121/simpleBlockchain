@@ -12,13 +12,21 @@ import (
 	"github.com/libp2p/go-libp2p"
 	crypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
-	peer "github.com/libp2p/go-libp2p-core/peer"
+	net "github.com/libp2p/go-libp2p-core/network"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	mplex "github.com/libp2p/go-libp2p-mplex"
-	net "github.com/libp2p/go-libp2p-core/network"
+	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	tcp "github.com/libp2p/go-tcp-transport"
+	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
+	noise "github.com/libp2p/go-libp2p-noise"
+)
+
+var (
+	bootstrapNode = []string{
+		"/ip4/172.31.35.134/tcp/4000/p2p/QmQnAZsyiJSovuqg8zjP3nKdm6Pwb75Mpn8HnGyD5WYZ15",
+	}
 )
 
 func CreateHost(ctx context.Context) (host.Host, error) {
@@ -48,6 +56,7 @@ func CreateHost(ctx context.Context) (host.Host, error) {
 		transport,
 		listenAddr,
 		muxer,
+		libp2p.Security(noise.ID, noise.New),
 		libp2p.Identity(prvKey),
 	)
 	if err != nil {
@@ -108,8 +117,13 @@ func setupDiscovery(ctx context.Context, host host.Host) error {
 		return err
 	}
 	var wg sync.WaitGroup
-	for _, peerAdr := range dht.DefaultBootstrapPeers {
-		peerInfo, _ := peer.AddrInfoFromP2pAddr(peerAdr)
+	for _, p := range bootstrapNode {
+		in, _ := ma.NewMultiaddr(p)
+		peerInfo, err := peerstore.InfoFromP2pAddr(in)
+		if err != nil {
+			panic(err)
+		}
+		// peerInfo, _ := peer.AddrInfoFromP2pAddr(peerAdr)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
