@@ -16,16 +16,16 @@ import (
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	mplex "github.com/libp2p/go-libp2p-mplex"
+	noise "github.com/libp2p/go-libp2p-noise"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	tcp "github.com/libp2p/go-tcp-transport"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
-	noise "github.com/libp2p/go-libp2p-noise"
 )
 
 var (
 	bootstrapNode = []string{
-		"/ip4/172.31.35.134/tcp/4000/p2p/QmQnAZsyiJSovuqg8zjP3nKdm6Pwb75Mpn8HnGyD5WYZ15",
+		"/ip4/13.59.233.151/tcp/4000/p2p/QmQnAZsyiJSovuqg8zjP3nKdm6Pwb75Mpn8HnGyD5WYZ15",
 	}
 )
 
@@ -101,7 +101,7 @@ func writeData(rw *bufio.ReadWriter) {
 }
 
 func StramHandler(stream net.Stream) {
-	fmt.Println("comes herer")
+	log.Info("Stream connected")
 	rw := bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
 	go readData(rw)
 	go writeData(rw)
