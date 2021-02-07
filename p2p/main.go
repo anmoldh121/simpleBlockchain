@@ -19,6 +19,7 @@ import (
 	noise "github.com/libp2p/go-libp2p-noise"
 	peerstore "github.com/libp2p/go-libp2p-peerstore"
 	tcp "github.com/libp2p/go-tcp-transport"
+	ws "github.com/libp2p/go-ws-transport"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 )
@@ -38,16 +39,17 @@ func CreateHost(ctx context.Context) (host.Host, error) {
 		return nil, err
 	}
 
-	var listenPort = os.Args[1]
+	var listenPort = "0"
 
 	transport := libp2p.ChainOptions(
 		libp2p.Transport(tcp.NewTCPTransport),
+		libp2p.Transport(ws.New),
 	)
 	muxer := libp2p.ChainOptions(
 		libp2p.Muxer("/mplex/6.7.0", mplex.DefaultTransport),
 	)
 
-	listenAddr := libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", listenPort))
+	listenAddr := libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", listenPort), fmt.Sprintf("/ip4/0.0.0.0/tcp/%s/ws", listenPort))
 
 	log.Info("Creating Host at port ", listenPort)
 
