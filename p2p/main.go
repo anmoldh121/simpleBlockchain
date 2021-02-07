@@ -49,7 +49,10 @@ func CreateHost(ctx context.Context) (host.Host, error) {
 		libp2p.Muxer("/mplex/6.7.0", mplex.DefaultTransport),
 	)
 
-	listenAddr := libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", listenPort), fmt.Sprintf("/ip4/0.0.0.0/tcp/%s/ws", listenPort))
+	listenAddr := libp2p.ListenAddrStrings(
+		fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", listenPort), 
+		fmt.Sprintf("/ip4/0.0.0.0/tcp/%s/ws", listenPort),
+	)
 
 	log.Info("Creating Host at port ", listenPort)
 
