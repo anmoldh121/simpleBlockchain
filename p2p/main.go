@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/libp2p/go-libp2p"
+	circuit "github.com/libp2p/go-libp2p-circuit"
 	crypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	net "github.com/libp2p/go-libp2p-core/network"
@@ -23,12 +24,11 @@ import (
 	ws "github.com/libp2p/go-ws-transport"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
-	circuit "github.com/libp2p/go-libp2p-circuit"
 )
 
 var (
 	bootstrapNode = []string{
-		"/ip4/13.59.233.151/tcp/4000/p2p/QmQnAZsyiJSovuqg8zjP3nKdm6Pwb75Mpn8HnGyD5WYZ15",
+		"/ip4/13.59.233.151/tcp/4000/p2p/QmVbcMycaK8ni5CeiM7JRjBRAdmwky6dQ6KcoxLesZDPk9",
 	}
 )
 
@@ -179,11 +179,11 @@ func setupDiscovery(ctx context.Context, host host.Host) error {
 				continue
 			}
 			log.Info("Connected to peer", peer)
-			stream, err := host.NewStream(ctx, peer.ID, "/chat/1.0.0")
-			if err != nil {
-				log.Warning("Error in creating stream")
-			}
-			StramHandler(stream)
+			// stream, err := host.NewStream(ctx, peer.ID, "/chat/1.0.0")
+			// if err != nil {
+			// 	log.Warning("Error in creating stream")
+			// }
+			// StramHandler(stream)
 		} else {
 			stream, err := host.NewStream(ctx, peer.ID, "/chat/1.0.0")
 			if err != nil {
