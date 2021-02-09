@@ -27,7 +27,8 @@ import (
 
 var (
 	bootstrapNode = []string{
-		"/ip4/13.59.233.151/tcp/4000/p2p/QmVbcMycaK8ni5CeiM7JRjBRAdmwky6dQ6KcoxLesZDPk9",
+		"/ip4/13.59.233.151/tcp/4000/p2p/QmQnAZsyiJSovuqg8zjP3nKdm6Pwb75Mpn8HnGyD5WYZ15",
+		"/ip4/127.0.0.1/tcp/4000/p2p/QmQnAZsyiJSovuqg8zjP3nKdm6Pwb75Mpn8HnGyD5WYZ15",
 	}
 )
 
@@ -165,7 +166,7 @@ func setupDiscovery(ctx context.Context, host host.Host) error {
 		if err != nil {
 			log.Warning("Error connecting to peer ", err)
 			log.Info("Relaying network")
-			relayAddr, err := ma.NewMultiaddr("/p2p-circuit/p2p/" + peer.ID.Pretty())
+			relayAddr, err := ma.NewMultiaddr(bootstrapNode[0] + "/p2p-circuit/p2p/" + peer.ID.Pretty())
 			if err != nil {
 				log.Warn("Relay not set")
 				continue
