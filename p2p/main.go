@@ -29,7 +29,6 @@ import (
 var (
 	bootstrapNode = []string{
 		"/ip4/13.59.233.151/tcp/4000/p2p/QmQnAZsyiJSovuqg8zjP3nKdm6Pwb75Mpn8HnGyD5WYZ15",
-		//"/ip4/127.0.0.1/tcp/4000/p2p/QmQnAZsyiJSovuqg8zjP3nKdm6Pwb75Mpn8HnGyD5WYZ15",
 	}
 )
 
@@ -55,7 +54,6 @@ func CreateHost(ctx context.Context) (host.Host, error) {
 	listenAddr := libp2p.ListenAddrStrings(
 		fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", listenPort),
 		fmt.Sprintf("/ip4/0.0.0.0/tcp/%s/ws", listenPort),
-		fmt.Sprintf("/ip4/0.0.0.0/udp/%s", listenPort),
 	)
 
 	log.Info("Creating Host at port ", listenPort)
@@ -67,7 +65,7 @@ func CreateHost(ctx context.Context) (host.Host, error) {
 		muxer,
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.Identity(prvKey),
-		libp2p.EnableRelay(circuit.OptDiscovery),
+		libp2p.EnableRelay(circuit.OptActive),
 	)
 	if err != nil {
 		return nil, err
@@ -181,6 +179,11 @@ func setupDiscovery(ctx context.Context, host host.Host) error {
 				continue
 			}
 			log.Info("Connected to peer", peer)
+			stream, err := host.NewStream(ctx, peer.ID, "/chat/1.0.0")
+			if err != nil {
+				log.Warning("Error in creating stream")
+			}
+			StramHandler(stream)
 		} else {
 			stream, err := host.NewStream(ctx, peer.ID, "/chat/1.0.0")
 			if err != nil {
