@@ -13,6 +13,7 @@ import (
 	crypto "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	net "github.com/libp2p/go-libp2p-core/network"
+	ipeer "github.com/libp2p/go-libp2p-core/peer"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	mplex "github.com/libp2p/go-libp2p-mplex"
@@ -22,7 +23,6 @@ import (
 	ws "github.com/libp2p/go-ws-transport"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
-	ipeer "github.com/libp2p/go-libp2p-core/peer"
 )
 
 var (
@@ -51,7 +51,7 @@ func CreateHost(ctx context.Context) (host.Host, error) {
 	)
 
 	listenAddr := libp2p.ListenAddrStrings(
-		fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", listenPort), 
+		fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", listenPort),
 		fmt.Sprintf("/ip4/0.0.0.0/tcp/%s/ws", listenPort),
 		fmt.Sprintf("/ip4/0.0.0.0/udp/%s", listenPort),
 	)
@@ -65,6 +65,7 @@ func CreateHost(ctx context.Context) (host.Host, error) {
 		muxer,
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.Identity(prvKey),
+		libp2p.EnableRelay(),
 	)
 	if err != nil {
 		return nil, err
@@ -170,13 +171,13 @@ func setupDiscovery(ctx context.Context, host host.Host) error {
 				continue
 			}
 			relayInfo := ipeer.AddrInfo{
-				ID: peer.ID,
+				ID:    peer.ID,
 				Addrs: []ma.Multiaddr{relayAddr},
 			}
 			if err = host.Connect(context.Background(), relayInfo); err != nil {
 				log.Warn("Error in relay", err)
 				continue
-			} 
+			}
 			log.Info("Connected to peer", peer)
 		} else {
 			stream, err := host.NewStream(ctx, peer.ID, "/chat/1.0.0")
