@@ -28,7 +28,7 @@ import (
 
 var (
 	bootstrapNode = []string{
-		"/ip4/13.59.233.151/tcp/4000/p2p/QmVbcMycaK8ni5CeiM7JRjBRAdmwky6dQ6KcoxLesZDPk9",
+		"/ip4/13.59.233.151/tcp/4000/p2p/QmQnAZsyiJSovuqg8zjP3nKdm6Pwb75Mpn8HnGyD5WYZ15",
 	}
 )
 
