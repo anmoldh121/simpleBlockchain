@@ -23,6 +23,7 @@ import (
 	ws "github.com/libp2p/go-ws-transport"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
+	circuit "github.com/libp2p/go-libp2p-circuit"
 )
 
 var (
@@ -41,7 +42,7 @@ func CreateHost(ctx context.Context) (host.Host, error) {
 		return nil, err
 	}
 
-	var listenPort = "0"
+	var listenPort = "4000"
 
 	transport := libp2p.ChainOptions(
 		libp2p.Transport(tcp.NewTCPTransport),
@@ -66,7 +67,7 @@ func CreateHost(ctx context.Context) (host.Host, error) {
 		muxer,
 		libp2p.Security(noise.ID, noise.New),
 		libp2p.Identity(prvKey),
-		libp2p.EnableRelay(),
+		libp2p.EnableRelay(circuit.OptDiscovery),
 	)
 	if err != nil {
 		return nil, err
