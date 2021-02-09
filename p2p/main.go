@@ -22,11 +22,12 @@ import (
 	ws "github.com/libp2p/go-ws-transport"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
+	ipeer "github.com/libp2p/go-libp2p-core/peer"
 )
 
 var (
 	bootstrapNode = []string{
-		"/ip4/13.59.233.151/tcp/4000/p2p/QmQnAZsyiJSovuqg8zjP3nKdm6Pwb75Mpn8HnGyD5WYZ15",
+		"/ip4/13.59.233.151/tcp/4000/p2p/QmVbcMycaK8ni5CeiM7JRjBRAdmwky6dQ6KcoxLesZDPk9",
 	}
 )
 
@@ -52,6 +53,7 @@ func CreateHost(ctx context.Context) (host.Host, error) {
 	listenAddr := libp2p.ListenAddrStrings(
 		fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", listenPort), 
 		fmt.Sprintf("/ip4/0.0.0.0/tcp/%s/ws", listenPort),
+		fmt.Sprintf("/ip4/0.0.0.0/udp/%s", listenPort),
 	)
 
 	log.Info("Creating Host at port ", listenPort)
@@ -161,7 +163,21 @@ func setupDiscovery(ctx context.Context, host host.Host) error {
 		err := host.Connect(context.Background(), peer)
 		if err != nil {
 			log.Warning("Error connecting to peer ", err)
-			continue
+			log.Info("Relaying network")
+			relayAddr, err := ma.NewMultiaddr("/p2p-circuit/p2p/" + peer.ID.Pretty())
+			if err != nil {
+				log.Warn("Relay not set")
+				continue
+			}
+			relayInfo := ipeer.AddrInfo{
+				ID: peer.ID,
+				Addrs: []ma.Multiaddr{relayAddr},
+			}
+			if err = host.Connect(context.Background(), relayInfo); err != nil {
+				log.Warn("Error in relay", err)
+				continue
+			} 
+			log.Info("Connected to peer", peer)
 		} else {
 			stream, err := host.NewStream(ctx, peer.ID, "/chat/1.0.0")
 			if err != nil {
