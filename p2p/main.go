@@ -1,216 +1,115 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"crypto/rand"
 	"fmt"
 	"io"
-	"os"
 	"sync"
 
-	"github.com/libp2p/go-libp2p"
-	circuit "github.com/libp2p/go-libp2p-circuit"
+	libp2p "github.com/libp2p/go-libp2p"
 	crypto "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/host"
-	net "github.com/libp2p/go-libp2p-core/network"
-	ipeer "github.com/libp2p/go-libp2p-core/peer"
+	host "github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/peer"
 	discovery "github.com/libp2p/go-libp2p-discovery"
-	dht "github.com/libp2p/go-libp2p-kad-dht"
-	mplex "github.com/libp2p/go-libp2p-mplex"
+	dht "github.com/libp2p/go-libp2p-kad-dht/dual"
 	noise "github.com/libp2p/go-libp2p-noise"
-	peerstore "github.com/libp2p/go-libp2p-peerstore"
+	// quic "github.com/libp2p/go-libp2p-quic-transport"
 	tcp "github.com/libp2p/go-tcp-transport"
-	ws "github.com/libp2p/go-ws-transport"
 	ma "github.com/multiformats/go-multiaddr"
 	log "github.com/sirupsen/logrus"
 )
 
+const PORT = "0"
+
 var (
-	bootstrapNode = []string{
-		"/ip4/13.59.233.151/tcp/4000/p2p/QmVbcMycaK8ni5CeiM7JRjBRAdmwky6dQ6KcoxLesZDPk9",
+	kahdemiaDHT *dht.DHT
+	serviceNode = []string{
+		// "/ip4/127.0.0.1/udp/4000/quic/p2p/QmVbcMycaK8ni5CeiM7JRjBRAdmwky6dQ6KcoxLesZDPk9",
+		"/ip4/127.0.0.1/tcp/4000/p2p/QmQnAZsyiJSovuqg8zjP3nKdm6Pwb75Mpn8HnGyD5WYZ15",
 	}
 )
 
 func CreateHost(ctx context.Context) (host.Host, error) {
 	var r io.Reader
 	r = rand.Reader
-
-	prvKey, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, r)
+	priv, _, err := crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, r)
 	if err != nil {
 		return nil, err
 	}
 
-	var listenPort = "4000"
-
-	transport := libp2p.ChainOptions(
+	opts := []libp2p.Option{
+		libp2p.ListenAddrStrings(fmt.Sprintf("/ip4/0.0.0.0/udp/%s/quic", PORT), fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", PORT)),
+		// libp2p.Transport(quic.NewTransport),
 		libp2p.Transport(tcp.NewTCPTransport),
-		libp2p.Transport(ws.New),
-	)
-	muxer := libp2p.ChainOptions(
-		libp2p.Muxer("/mplex/6.7.0", mplex.DefaultTransport),
-	)
-
-	listenAddr := libp2p.ListenAddrStrings(
-		fmt.Sprintf("/ip4/0.0.0.0/tcp/%s", listenPort),
-		fmt.Sprintf("/ip4/0.0.0.0/tcp/%s/ws", listenPort),
-	)
-
-	log.Info("Creating Host at port ", listenPort)
-
-	host, err := libp2p.New(
-		ctx,
-		transport,
-		listenAddr,
-		muxer,
+		libp2p.Identity(priv),
 		libp2p.Security(noise.ID, noise.New),
-		libp2p.Identity(prvKey),
-		libp2p.EnableRelay(circuit.OptActive),
-	)
+		libp2p.NATPortMap(),
+	}
+
+	basicHost, err := libp2p.New(ctx, opts...)
 	if err != nil {
 		return nil, err
 	}
-	host.SetStreamHandler("/chat/1.0.0", StramHandler)
-	return host, nil
-}
-
-func readData(rw *bufio.ReadWriter) {
-	for {
-		str, err := rw.ReadString('\n')
-		if err != nil {
-			log.Error("Error reading from buffer")
-		}
-		if str == "" {
-			return
-		}
-		if str != "\n" {
-			fmt.Printf("\x1b[32m%s\x1b[0m> ", str)
-		}
-	}
-}
-
-func writeData(rw *bufio.ReadWriter) {
-	stdReader := bufio.NewReader(os.Stdin)
-	for {
-		fmt.Print(">")
-		sendData, err := stdReader.ReadString('\n')
-		if err != nil {
-			log.Error("Error reading from stdin")
-		}
-		_, err = rw.WriteString(fmt.Sprintf("%s\n", sendData))
-		if err != nil {
-			log.Error("Error writing buffer")
-		}
-		err = rw.Flush()
-		if err != nil {
-			log.Error("Error while flushing buffer")
-		}
-	}
-}
-
-func StramHandler(stream net.Stream) {
-	log.Info("Stream connected")
-	rw := bufio.NewReadWriter(bufio.NewReader(stream), bufio.NewWriter(stream))
-	go readData(rw)
-	go writeData(rw)
+	return basicHost, nil
 }
 
 func setupDiscovery(ctx context.Context, host host.Host) error {
-	kademliaDHT, err := dht.New(ctx, host)
+	log.Info("Bootstrapping DHT")
+	kahdemiaDHT, err := dht.New(ctx, host)
 	if err != nil {
 		return err
 	}
-	log.Info("Bootstrapping node")
-	if err := kademliaDHT.Bootstrap(ctx); err != nil {
+	if err := kahdemiaDHT.Bootstrap(ctx); err != nil {
 		return err
 	}
+
 	var wg sync.WaitGroup
-	for _, p := range bootstrapNode {
-		in, _ := ma.NewMultiaddr(p)
-		peerInfo, err := peerstore.InfoFromP2pAddr(in)
+	for _, peerAddr := range serviceNode {
+		maddr := ma.StringCast(peerAddr)
+		peerInfo, err := peer.AddrInfoFromP2pAddr(maddr)
 		if err != nil {
-			panic(err)
+			return err
 		}
-		// peerInfo, _ := peer.AddrInfoFromP2pAddr(peerAdr)
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			if err := host.Connect(ctx, *peerInfo); err != nil {
-				log.Warning(err)
+				log.Warn("Can not connect to service node")
 			} else {
-				log.Info("Connection established with bootstrap node: ", *peerInfo)
+				log.Info("Connection established with service node: ", *peerInfo)
 			}
 		}()
 	}
 	wg.Wait()
 
-	log.Info("Announcing ourselves...")
-	routingDiscovery := discovery.NewRoutingDiscovery(kademliaDHT)
-	discovery.Advertise(ctx, routingDiscovery, "randezvous")
-	log.Info("Successfully announced!")
+	log.Info("Announcing ourselves")
+	routingDiscovery := discovery.NewRoutingDiscovery(kahdemiaDHT)
+	discovery.Advertise(ctx, routingDiscovery, "meethere")
+	log.Info("Successfully announced")
+	log.Info("peers", host.Peerstore().Peers())
 
-	log.Info("Searching for other peers...")
-	peerChan, err := routingDiscovery.FindPeers(ctx, "randezvous")
+	log.Debug("Searching for other peers")
+	peerChan, err := routingDiscovery.FindPeers(ctx, "meethere")
 	if err != nil {
 		return err
 	}
-
-	for peer := range peerChan {
-		if peer.ID == host.ID() {
-			continue
-		}
-		log.Debug("Found peer: ", peer)
-		log.Debug("Connecting to peer: ", peer)
-		err := host.Connect(context.Background(), peer)
-		if err != nil {
-			log.Warning("Error connecting to peer ", err)
-			log.Info("Relaying network")
-			relayAddr, err := ma.NewMultiaddr(bootstrapNode[0] + "/p2p-circuit/p2p/" + peer.ID.Pretty())
-			if err != nil {
-				log.Warn("Relay not set")
-				continue
-			}
-			relayInfo := ipeer.AddrInfo{
-				ID:    peer.ID,
-				Addrs: []ma.Multiaddr{relayAddr},
-			}
-			if err = host.Connect(context.Background(), relayInfo); err != nil {
-				log.Warn("Error in relay", err)
-				continue
-			}
-			log.Info("Connected to peer", peer)
-			// stream, err := host.NewStream(ctx, peer.ID, "/chat/1.0.0")
-			// if err != nil {
-			// 	log.Warning("Error in creating stream")
-			// }
-			// StramHandler(stream)
-		} else {
-			stream, err := host.NewStream(ctx, peer.ID, "/chat/1.0.0")
-			if err != nil {
-				log.Warning("Error in creating stream")
-			}
-			StramHandler(stream)
-		}
-		log.Info("Connected to peer", peer)
-	}
-
+	log.Info("Length of peer discovery: ", len(peerChan))
 	return nil
 }
 
 func main() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	basicHost, err := CreateHost(ctx)
+	ctx := context.Background()
+	host, err := CreateHost(ctx)
 	if err != nil {
-		log.Panic(err)
+		log.Error("error creating host", err)
+	}
+	log.Info("Host created: ", host.ID(), host.Addrs())
+
+	err = setupDiscovery(ctx, host)
+	if err != nil {
+		log.Error("Error in setting up discovery ", err)
 	}
 
-	log.Info("Host created we are: ", basicHost.ID())
-	log.Info(basicHost.Addrs())
-
-	err = setupDiscovery(ctx, basicHost)
-	if err != nil {
-		log.Panic(err)
-	}
 	select {}
 }
