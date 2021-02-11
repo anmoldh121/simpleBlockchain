@@ -28,7 +28,7 @@ import (
 
 var (
 	bootstrapNode = []string{
-		"/ip4/13.59.233.151/tcp/4000/p2p/QmVbcMycaK8ni5CeiM7JRjBRAdmwky6dQ6KcoxLesZDPk9",
+		"/ip4/13.59.233.151/tcp/4000/p2p/QmQnAZsyiJSovuqg8zjP3nKdm6Pwb75Mpn8HnGyD5WYZ15",
 	}
 )
 
@@ -41,7 +41,7 @@ func CreateHost(ctx context.Context) (host.Host, error) {
 		return nil, err
 	}
 
-	var listenPort = "4000"
+	var listenPort = "0"
 
 	transport := libp2p.ChainOptions(
 		libp2p.Transport(tcp.NewTCPTransport),
@@ -126,7 +126,7 @@ func setupDiscovery(ctx context.Context, host host.Host) error {
 	}
 	var wg sync.WaitGroup
 	for _, p := range bootstrapNode {
-		in, _ := ma.NewMultiaddr(p)
+		in := ma.StringCast(p)
 		peerInfo, err := peerstore.InfoFromP2pAddr(in)
 		if err != nil {
 			panic(err)
